@@ -4,9 +4,9 @@ import streamlit as st
 st.set_page_config(page_title="Poultry Feed Formulation System", page_icon="🌾", layout="wide")
 
 st.title("🌾 Industrial Poultry Feed Formulation & Nutrient Calculator")
-st.write("Live B2B Client Workbench: Custom Ingredient Formulation & Real-Time Nutritional Balancing.")
+st.write("Live B2B Client Workbench: 100% Scale Formulation & Real-Time Nutritional Balancing.")
 
-# 1. Initialize Complete Poultry Recipe & Nutrient Matrix with your custom ingredients (Total = 100%)
+# 1. Initialize Complete Poultry Recipe & Nutrient Matrix (Default values sum exactly to 100.0%)
 if "recipe_df" not in st.session_state:
     st.session_state.recipe_df = pd.DataFrame({
         "Ingredient": [
@@ -46,12 +46,12 @@ if menu == "Nutritional Guidelines":
     * **Starter Phase:** Crude Protein ~22%, Energy ~3000 kcal/kg
     * **Grower Phase:** Crude Protein ~20%, Energy ~3100 kcal/kg
     * **Finisher Phase:** Crude Protein ~18%, Energy ~3200 kcal/kg
-    * *Note: Total inclusion across all ingredients must sum exactly to **100%**.*
+    * *Note: Total inclusion must equal exactly **100.0%**.*
     """)
 
 elif menu == "Recipe & Nutrient Workbench":
     st.subheader("🧪 Custom Ingredient Formulation Workbench")
-    st.write("Modify the **Inclusion %** for your ingredients below. The totals, costs, and nutritional yields will update instantly.")
+    st.write("Modify the **Inclusion %** below. Total must equal **100%**.")
 
     # 2. Interactive Data Editor
     edited_recipe = st.data_editor(
@@ -63,19 +63,23 @@ elif menu == "Recipe & Nutrient Workbench":
     
     st.session_state.recipe_df = edited_recipe
 
-    # 3. Live Calculations
+    # 3. Live Calculations based strictly on 100% scale
     try:
         total_inclusion = edited_recipe["Inclusion %"].sum()
         
-        # Calculate Costs & Nutrient Yields
-        partial_costs = (edited_recipe["Inclusion %"] / 100.0) * edited_recipe["Cost/Ton ($)"]
+        # Convert percentages to fractional weights (summing to 1.0)
+        fraction = edited_recipe["Inclusion %"] / 100.0
+
+        # Calculate Total Cost per Ton
+        partial_costs = fraction * edited_recipe["Cost/Ton ($)"]
         total_batch_cost = partial_costs.sum()
 
-        total_protein = ((edited_recipe["Inclusion %"] / 100.0) * edited_recipe["Protein %"]).sum()
-        total_fat = ((edited_recipe["Inclusion %"] / 100.0) * edited_recipe["Fat %"]).sum()
-        total_energy = ((edited_recipe["Inclusion %"] / 100.0) * edited_recipe["Energy (kcal/kg)"]).sum()
-        total_calcium = ((edited_recipe["Inclusion %"] / 100.0) * edited_recipe["Calcium %"]).sum()
-        total_phosphorus = ((edited_recipe["Inclusion %"] / 100.0) * edited_recipe["Avail. P %"]).sum()
+        # Calculate True Nutritional Percentages (e.g. 19% instead of 190%)
+        total_protein = (fraction * edited_recipe["Protein %"]).sum()
+        total_fat = (fraction * edited_recipe["Fat %"]).sum()
+        total_energy = (fraction * edited_recipe["Energy (kcal/kg)"]).sum()
+        total_calcium = (fraction * edited_recipe["Calcium %"]).sum()
+        total_phosphorus = (fraction * edited_recipe["Avail. P %"]).sum()
 
         # Display Top Metrics Banner
         col1, col2, col3 = st.columns(3)
@@ -91,7 +95,7 @@ elif menu == "Recipe & Nutrient Workbench":
         st.markdown("---")
         st.subheader("📈 Delivered Nutritional Yield Profile")
         
-        # Nutrient Summary Cards
+        # Nutrient Summary Cards (Showing correct normal percentages like 19.0%)
         n_col1, n_col2, n_col3, n_col4, n_col5 = st.columns(5)
         with n_col1:
             st.metric("Crude Protein", f"{total_protein:.2f}%")
@@ -112,4 +116,4 @@ elif menu == "Recipe & Nutrient Workbench":
         if abs(edited_recipe["Inclusion %"].sum() - 100.0) <= 0.01:
             st.success("🎉 Batch successfully validated and locked for production!")
         else:
-            st.error("❌ Batch cannot be locked: Total inclusion percentage must equal exactly 100%. Adjust your percentages.")
+            st.error("❌ Batch cannot be locked: Total inclusion must equal exactly 100%.")
